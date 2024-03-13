@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="./main.css" />
+    <title>Document</title>
+  </head>
+  <body>
+    <input type="text" placeholder="Username" id="username" />
+    <input type="text" placeholder="Full Name" id="fullname" />
+    <br />
+    <br />
+    <input type="button" value="Registrar" onclick="save()" />
+    <input type="button" value="Cancelar" />
+    <br />
+    <br />
+
+    <table border="1">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Username</th>
+          <th>Full Name</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </body>
+  <script>
+    const apiURL = "http://localhost:3000";
+    const tableBody = document.getElementById("table-body");
+    const username = document.getElementById("username");
+    const fullname = document.getElementById("fullname");
+
+    let isEditing = false;
+    let userID = 0;
+
+    async function retrieveUsers() {
+      const response = await fetch(`${apiURL}/users`);
+      const data = await response.json();
+
+      let number = 1;
+
+      tableBody.innerHTML = "";
+
+      data.forEach((user) => {
+        user.number = number;
+        addRow(user);
+        number += 1;
+      });
+    }
+
+    function addRow(data) {
+      tableBody.innerHTML += `
+          <tr>
+            <td>${data.number}</td>
+            <td>${data.username}</td>
+            <td>${data.fullname}</td>
+            <td>
+              <button onclick="getUserData(${data.id})">Editar</button>
+              <button onclick="deleteUser(${data.id})">Borrar</button>
+            </td>
+          </tr>
+        `;
+    }
+
+    async function addNewUser() {
+      const newUser = {
+        username: username.value,
+        fullname: fullname.value,
+      };
+
+      const response = await fetch(`${apiURL}/users`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newUser),
+      });
+
+      if (response.ok) {
+        await retrieveUsers();
+
+        username.value = "";
+        fullname.value = "";
+      } else {
+        const error = await response.json();
+        alert(error.message);
+      }
+    }
+
+    async function deleteUser(id) {
+      const yesOrNo = prompt(`Realmente desea eliminar el usuario? /n
+      1 -  Si / 2 - No`);
+      if (yesOrNo !== "1") {
+        return;
+      }
+      const response = await fetch(`${apiURL}/users/${id}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        await retrieveUsers();
+      } else {
+        const error = await response.json();
+        alert(error.message);
+      }
+    }
+
+    async function getUserData(id) {
+      userID = id;
+      const response = await fetch(`${apiURL}/users/${id}`);
+
+      if (response.ok) {
+        const body = await response.json();
+
+        username.value = body.username;
+        fullname.value = body.fullname;
+        isEditing = true;
+      }
+    }
+
+    async function save() {
+      if (isEditing) {
+        await editUser();
+        return;
+      }
+      await addNewUser();
+    }
+
+    function resetAll() {
+      isEditing = false;
+      username.value = "";
+      fullname.value = "";
+    }
+
+    async function editUser() {
+      const newUser = {
+        username: username.value,
+        fullname: fullname.value,
+      };
+
+      const response = await fetch(`${apiURL}/users/${userID}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newUser),
+      });
+
+      if (response.ok) {
+        await retrieveUsers();
+      } else {
+        const error = await response.json();
+        alert(error.message);
+      }
+    }
+
+    retrieveUsers().then((response) => {});
+  </script>
+</html>
